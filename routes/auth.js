@@ -11,8 +11,8 @@ const router = express.Router();
 router.post('/register', async (req, res) => {
   const { username, password, token } = req.body;
 
-  // Перевірка CAPTCHA
   try {
+    // Перевірка CAPTCHA
     const secretKey = process.env.RECAPTCHA_SECRET_KEY;
     const response = await axios.post(`https://www.google.com/recaptcha/api/siteverify`, null, {
       params: {
@@ -25,6 +25,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'CAPTCHA verification failed' });
     }
 
+    // Перевірка користувача
     const existingUser = await pool.query('SELECT * FROM users WHERE username=$1', [username]);
     if (existingUser.rows.length > 0) {
       return res.status(400).json({ error: 'User already exists' });
@@ -38,3 +39,28 @@ router.post('/register', async (req, res) => {
     res.status(500).json({ error: 'Error registering user' });
   }
 });
+
+// ✅ ЛОГІН
+router.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE username=$1', [username]);
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    const user = result.rows[0];
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.status(400).json({ error: 'Invalid password' });
+    }
+
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    res.json({ token });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+module.exports = router;
