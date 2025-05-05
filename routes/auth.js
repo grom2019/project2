@@ -55,7 +55,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Верифікація email
+// Верифікація email без перевірки токену
 router.get('/verify-email', async (req, res) => {
   const { token } = req.query;
 
@@ -64,17 +64,10 @@ router.get('/verify-email', async (req, res) => {
   }
 
   try {
-    // Перевірка чи токен існує в базі
-    const result = await pool.query('SELECT * FROM users WHERE email_token=$1', [token]);
-
-    if (result.rows.length === 0) {
-      return res.status(400).json({ error: 'Invalid or expired token' });
-    }
-
-    // Оновлюємо статус користувача на "підтверджений"
+    // Оновлення статусу користувача на "підтверджений" без перевірки токену
     await pool.query('UPDATE users SET is_verified=true, email_token=NULL WHERE email_token=$1', [token]);
 
-    res.status(200).json({ message: '✅ Email successfully verified!' });
+    res.status(200).json({ message: '✅ Email successfully verified (token ignored)!' });
   } catch (err) {
     console.error('Error during email verification:', err);
     res.status(500).json({ error: 'Verification failed' });
