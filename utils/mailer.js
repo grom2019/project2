@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const sendConfirmationEmail = (to, token) => {
+const sendConfirmationEmail = async (to, token) => {
   const url = `${process.env.BASE_URL}/verify-email?token=${token}`;
   const options = {
     from: process.env.EMAIL_USER,
@@ -17,7 +17,13 @@ const sendConfirmationEmail = (to, token) => {
     html: `<p>Натисніть <a href="${url}">тут</a>, щоб підтвердити свою реєстрацію</p>`,
   };
 
-  return transporter.sendMail(options);
+  try {
+    await transporter.sendMail(options);
+    console.log('Email sent successfully');
+  } catch (err) {
+    console.error('Error sending email:', err);
+    throw new Error('Error sending email');
+  }
 };
 
 module.exports = sendConfirmationEmail;

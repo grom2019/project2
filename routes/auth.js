@@ -1,3 +1,5 @@
+// routes/auth.js
+
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -9,12 +11,12 @@ require('dotenv').config();
 
 const router = express.Router();
 
-// ✅ РЕЄСТРАЦІЯ з CAPTCHA + email confirm
+// ✅ РЕЄСТРАЦІЯ
 router.post('/register', async (req, res) => {
-  const { username, password, token } = req.body;
+  const { username, email, password, token } = req.body;
 
   try {
-    // CAPTCHA перевірка
+    // ✅ CAPTCHA перевірка
     const secretKey = process.env.RECAPTCHA_SECRET_KEY;
     const response = await axios.post(`https://www.google.com/recaptcha/api/siteverify`, null, {
       params: {
@@ -27,7 +29,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'CAPTCHA verification failed' });
     }
 
-    // Перевірка чи користувач існує
+    // 🔍 Перевірка чи користувач вже існує
     const existingUser = await pool.query('SELECT * FROM users WHERE username=$1', [username]);
     if (existingUser.rows.length > 0) {
       return res.status(400).json({ error: 'User already exists' });
@@ -36,14 +38,14 @@ router.post('/register', async (req, res) => {
     const hashed = await bcrypt.hash(password, 10);
     const emailToken = crypto.randomBytes(32).toString('hex');
 
-    // Додаємо користувача з email_token і is_verified
+    // 📝 Додаємо користувача
     await pool.query(
-      'INSERT INTO users (username, password, email_token, is_verified) VALUES ($1, $2, $3, $4)',
-      [username, hashed, emailToken, false]
+      'INSERT INTO users (username, email, password, email_token, is_verified) VALUES ($1, $2, $3, $4, $5)',
+      [username, email, hashed, emailToken, false]
     );
 
-    // Надсилання підтвердження email
-    await sendConfirmationEmail(username, emailToken);
+    // 📧 Надсилання підтвердження
+    await sendConfirmationEmail(email, emailToken); // ✅ тут передаємо email, а не username
 
     res.status(201).json({ message: 'Registration successful! Check your email to verify.' });
   } catch (err) {
@@ -52,7 +54,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// ✅ ВЕРИФІКАЦІЯ email
+// ✅ Верифікація
 router.get('/verify-email', async (req, res) => {
   const { token } = req.query;
   try {
@@ -70,7 +72,7 @@ router.get('/verify-email', async (req, res) => {
   }
 });
 
-// ✅ ЛОГІН
+// ✅ Логін
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
