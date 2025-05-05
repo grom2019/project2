@@ -7,7 +7,14 @@ const pool = require('./db');
 
 const app = express();
 
-app.use(cors());
+// Дозволяємо запити лише з конкретного домену для виробничого середовища
+const corsOptions = {
+  origin: process.env.FRONTEND_URL, // Встановіть ваш домен фронтенду
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true, // Якщо ви використовуєте cookies або аутентифікацію
+};
+
+app.use(cors(corsOptions)); // Налаштовуємо CORS з конкретними опціями
 app.use(express.json());
 
 // ✅ Підключення маршрутів
