@@ -1,20 +1,21 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
-
+const dotenv = require('dotenv');
 const authRoutes = require('./routes/auth');
 const pool = require('./db');
+
+dotenv.config();
 
 const app = express();
 
 // Налаштування CORS
 const corsOptions = {
-  origin: process.env.FRONTEND_URL, // Домен вашого фронтенду
+  origin: process.env.FRONTEND_URL,  // Задайте тут правильний домен фронтенду
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
 };
 
-app.use(cors(corsOptions)); // Встановлюємо CORS
+app.use(cors(corsOptions));  // Встановлюємо CORS
 app.use(express.json());
 
 // Підключення маршрутів
