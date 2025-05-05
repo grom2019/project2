@@ -3,7 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
-const pool = require('./db'); // ⬅️ Тут підключається db.js
+const pool = require('./db');  // Підключення до db.js
 
 const app = express();
 
