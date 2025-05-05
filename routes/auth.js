@@ -1,5 +1,3 @@
-// routes/auth.js
-
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -11,12 +9,12 @@ require('dotenv').config();
 
 const router = express.Router();
 
-// ✅ РЕЄСТРАЦІЯ
+// Реєстрація
 router.post('/register', async (req, res) => {
   const { username, email, password, token } = req.body;
 
   try {
-    // ✅ CAPTCHA перевірка
+    // CAPTCHA перевірка
     const secretKey = process.env.RECAPTCHA_SECRET_KEY;
     const response = await axios.post(`https://www.google.com/recaptcha/api/siteverify`, null, {
       params: {
@@ -29,7 +27,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'CAPTCHA verification failed' });
     }
 
-    // 🔍 Перевірка чи користувач вже існує
+    // Перевірка чи користувач вже існує
     const existingUser = await pool.query('SELECT * FROM users WHERE username=$1', [username]);
     if (existingUser.rows.length > 0) {
       return res.status(400).json({ error: 'User already exists' });
@@ -38,14 +36,14 @@ router.post('/register', async (req, res) => {
     const hashed = await bcrypt.hash(password, 10);
     const emailToken = crypto.randomBytes(32).toString('hex');
 
-    // 📝 Додаємо користувача
+    // Додаємо користувача в базу
     await pool.query(
       'INSERT INTO users (username, email, password, email_token, is_verified) VALUES ($1, $2, $3, $4, $5)',
       [username, email, hashed, emailToken, false]
     );
 
-    // 📧 Надсилання підтвердження
-    await sendConfirmationEmail(email, emailToken); // ✅ тут передаємо email, а не username
+    // Надсилаємо email з підтвердженням
+    await sendConfirmationEmail(email, emailToken);
 
     res.status(201).json({ message: 'Registration successful! Check your email to verify.' });
   } catch (err) {
@@ -54,9 +52,10 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// ✅ Верифікація
+// Верифікація email
 router.get('/verify-email', async (req, res) => {
   const { token } = req.query;
+
   try {
     const result = await pool.query('SELECT * FROM users WHERE email_token=$1', [token]);
     if (result.rows.length === 0) {
@@ -72,9 +71,10 @@ router.get('/verify-email', async (req, res) => {
   }
 });
 
-// ✅ Логін
+// Логін
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
+  
   try {
     const result = await pool.query('SELECT * FROM users WHERE username=$1', [username]);
     if (result.rows.length === 0) {

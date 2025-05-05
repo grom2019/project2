@@ -7,23 +7,23 @@ const pool = require('./db');
 
 const app = express();
 
-// Дозволяємо запити лише з конкретного домену для виробничого середовища
+// Налаштування CORS
 const corsOptions = {
-  origin: process.env.FRONTEND_URL, // Встановіть ваш домен фронтенду
+  origin: process.env.FRONTEND_URL, // Домен вашого фронтенду
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true, // Якщо ви використовуєте cookies або аутентифікацію
+  credentials: true,
 };
 
-app.use(cors(corsOptions)); // Налаштовуємо CORS з конкретними опціями
+app.use(cors(corsOptions)); // Встановлюємо CORS
 app.use(express.json());
 
-// ✅ Підключення маршрутів
+// Підключення маршрутів
 app.use('/api/auth', authRoutes);
 
 // Тестовий маршрут
 app.get('/', (req, res) => res.send('API running'));
 
-// Перевірка підключення до бази
+// Перевірка підключення до бази даних
 pool.query('SELECT NOW()', (err, resDb) => {
   if (err) {
     console.error('❌ Error connecting to the database:', err.stack);
