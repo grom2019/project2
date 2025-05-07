@@ -10,8 +10,6 @@ const verifyToken = require('../middleware/verifyToken');
 require('dotenv').config();
 
 const router = express.Router();
-
-// Функція для відправки помилок
 const sendError = (res, status, message) => res.status(status).json({ error: message });
 
 // === РЕЄСТРАЦІЯ ===
@@ -37,14 +35,13 @@ router.post('/register', async (req, res) => {
 
     await sendConfirmationEmail(email, emailToken);
 
-    // Затримка для перевірки через 10 секунд
     setTimeout(async () => {
       await pool.query('UPDATE users SET is_verified=true WHERE id=$1', [newUser[0].id]);
     }, 10000);
 
     res.status(201).json({ message: 'Registration successful! Check your email to verify.' });
   } catch (err) {
-    console.error(err);
+    console.error('❌ Registration error:', err);
     sendError(res, 500, 'Error registering user');
   }
 });
@@ -64,13 +61,15 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
     res.status(200).json({ token });
   } catch (err) {
-    console.error('Login failed:', err);
+    console.error('❌ Login failed:', err);
     sendError(res, 500, 'Login failed');
   }
 });
 
 // === ПЕРЕГЛЯД ПРОФІЛЮ ===
 router.get('/profile', verifyToken, async (req, res) => {
+  console.log('✅ Profile access by user ID:', req.userId);
+
   try {
     const { rows } = await pool.query(
       `SELECT id, username, email, first_name, last_name, patronymic, birth_date,
@@ -81,7 +80,7 @@ router.get('/profile', verifyToken, async (req, res) => {
     if (!rows.length) return sendError(res, 404, 'User not found');
     res.status(200).json(rows[0]);
   } catch (err) {
-    console.error('Profile error:', err);
+    console.error('❌ Profile error:', err);
     sendError(res, 500, 'Could not fetch profile');
   }
 });
@@ -131,7 +130,7 @@ router.put('/profile', verifyToken, async (req, res) => {
 
     res.status(200).json({ message: 'Profile updated', user: rows[0] });
   } catch (err) {
-    console.error('Update profile error:', err);
+    console.error('❌ Update profile error:', err);
     sendError(res, 500, 'Failed to update profile');
   }
 });
