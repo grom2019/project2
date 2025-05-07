@@ -97,7 +97,7 @@ router.post('/login', async (req, res) => {
     if (!user.is_verified) {
       return res.status(400).json({ error: 'Please verify your email before logging in' });
     }
-
+//
     // Генерація JWT токена для сесії
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
     res.status(200).json({ token });
