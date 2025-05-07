@@ -100,6 +100,11 @@ router.put('/profile', verifyToken, async (req, res) => {
   } = req.body;
 
   try {
+    // Validate the provided data
+    if (!first_name || !last_name || !patronymic || !birth_date) {
+      return sendError(res, 400, 'Missing required fields');
+    }
+
     const query = `
       UPDATE users SET 
         first_name=$1,
@@ -111,7 +116,8 @@ router.put('/profile', verifyToken, async (req, res) => {
         position=$7,
         mos=$8,
         avatar_url=$9
-      WHERE id=$10 RETURNING *`;
+      WHERE id=$10 RETURNING id, username, email, first_name, last_name, patronymic, birth_date,
+        military_unit, rank, position, mos, avatar_url`;
 
     const values = [
       first_name,
@@ -128,7 +134,11 @@ router.put('/profile', verifyToken, async (req, res) => {
 
     const { rows } = await pool.query(query, values);
 
-    res.status(200).json({ message: 'Profile updated', user: rows[0] });
+    if (rows.length === 0) {
+      return sendError(res, 400, 'User not found');
+    }
+
+    res.status(200).json({ message: 'Profile updated successfully', user: rows[0] });
   } catch (err) {
     console.error('❌ Update profile error:', err);
     sendError(res, 500, 'Failed to update profile');
