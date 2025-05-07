@@ -14,7 +14,7 @@ const router = express.Router();
 // Функція для відправки помилок
 const sendError = (res, status, message) => res.status(status).json({ error: message });
 
-// Реєстрація
+// === РЕЄСТРАЦІЯ ===
 router.post('/register', async (req, res) => {
   const { username, email, password, token } = req.body;
 
@@ -49,7 +49,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Логін
+// === ВХІД ===
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
@@ -69,10 +69,15 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Перевірка профілю (protected route)
+// === ПЕРЕГЛЯД ПРОФІЛЮ ===
 router.get('/profile', verifyToken, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT id, username, email FROM users WHERE id=$1', [req.userId]);
+    const { rows } = await pool.query(
+      `SELECT id, username, email, first_name, last_name, patronymic, birth_date,
+              military_unit, rank, position, mos, avatar_url
+       FROM users WHERE id=$1`,
+      [req.userId]
+    );
     if (!rows.length) return sendError(res, 404, 'User not found');
     res.status(200).json(rows[0]);
   } catch (err) {
@@ -80,5 +85,55 @@ router.get('/profile', verifyToken, async (req, res) => {
     sendError(res, 500, 'Could not fetch profile');
   }
 });
-//
+
+// === ОНОВЛЕННЯ ПРОФІЛЮ ===
+router.put('/profile', verifyToken, async (req, res) => {
+  const {
+    first_name,
+    last_name,
+    patronymic,
+    birth_date,
+    military_unit,
+    rank,
+    position,
+    mos,
+    avatar_url
+  } = req.body;
+
+  try {
+    const query = `
+      UPDATE users SET 
+        first_name=$1,
+        last_name=$2,
+        patronymic=$3,
+        birth_date=$4,
+        military_unit=$5,
+        rank=$6,
+        position=$7,
+        mos=$8,
+        avatar_url=$9
+      WHERE id=$10 RETURNING *`;
+
+    const values = [
+      first_name,
+      last_name,
+      patronymic,
+      birth_date,
+      military_unit,
+      rank,
+      position,
+      mos,
+      avatar_url,
+      req.userId
+    ];
+
+    const { rows } = await pool.query(query, values);
+
+    res.status(200).json({ message: 'Profile updated', user: rows[0] });
+  } catch (err) {
+    console.error('Update profile error:', err);
+    sendError(res, 500, 'Failed to update profile');
+  }
+});
+
 module.exports = router;
