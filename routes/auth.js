@@ -80,5 +80,5 @@ router.get('/profile', verifyToken, async (req, res) => {
     sendError(res, 500, 'Could not fetch profile');
   }
 });
-
+//
 module.exports = router;
