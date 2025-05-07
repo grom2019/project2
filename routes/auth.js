@@ -39,38 +39,32 @@ router.post('/register', async (req, res) => {
     // Генеруємо токен для підтвердження email
     const emailToken = crypto.randomBytes(32).toString('hex');
 
-    // Додаємо користувача в базу даних
-    await pool.query(
-      'INSERT INTO users (username, email, password, email_token, is_verified) VALUES ($1, $2, $3, $4, $5)',
-      [username, email, hashedPassword, emailToken, false]
+    // Додаємо користувача в базу даних з is_verified=true одразу
+    const result = await pool.query(
+      'INSERT INTO users (username, email, password, email_token, is_verified) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [username, email, hashedPassword, emailToken, true] // is_verified = true
     );
+
+    // Отримуємо id нового користувача
+    const userId = result.rows[0].id;
 
     // Надсилаємо email з підтвердженням
     await sendConfirmationEmail(email, emailToken);
+
+    // Затримка 10 секунд для зміни статусу користувача (на випадок, якщо хочеш додаткову перевірку або оновлення)
+    setTimeout(async () => {
+      try {
+        await pool.query('UPDATE users SET is_verified=true WHERE id=$1', [userId]);
+        console.log(`User ${username} has been verified after delay.`);
+      } catch (err) {
+        console.error('Error verifying user after delay:', err);
+      }
+    }, 10000); // Затримка 10 секунд
 
     res.status(201).json({ message: 'Registration successful! Check your email to verify.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error registering user' });
-  }
-});
-
-// Верифікація email без перевірки токену
-router.get('/verify-email', async (req, res) => {
-  const { token } = req.query;
-
-  if (!token) {
-    return res.status(400).json({ error: 'Token is missing or invalid' });
-  }
-
-  try {
-    // Оновлення статусу користувача на "підтверджений" без перевірки токену
-    await pool.query('UPDATE users SET is_verified=true, email_token=NULL WHERE email_token=$1', [token]);
-
-    res.status(200).json({ message: '✅ Email successfully verified (token ignored)!' });
-  } catch (err) {
-    console.error('Error during email verification:', err);
-    res.status(500).json({ error: 'Verification failed' });
   }
 });
 
@@ -97,7 +91,7 @@ router.post('/login', async (req, res) => {
     if (!user.is_verified) {
       return res.status(400).json({ error: 'Please verify your email before logging in' });
     }
-//
+
     // Генерація JWT токена для сесії
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
     res.status(200).json({ token });
