@@ -11,5 +11,5 @@ const pool = new Pool({
     rejectUnauthorized: false,  // Render вимагає SSL
   },
 });
-
+//
 module.exports = pool;
