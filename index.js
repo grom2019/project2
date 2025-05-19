@@ -1,12 +1,14 @@
-// === server.js ===
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path');
 const authRoutes = require('./routes/auth');
+const applicationsRoutes = require('./routes/applications');
 const pool = require('./db');
 
 dotenv.config();
-const { FRONTEND_URL, PORT = 5000 } = process.env;  // Деструктуризація для зручності
+const { FRONTEND_URL, PORT = 5000 } = process.env;
+
 const app = express();
 
 app.use(cors({
@@ -16,11 +18,12 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // якщо потрібно
 app.use('/api/auth', authRoutes);
+app.use('/api/applications', applicationsRoutes);
 
 app.get('/', (req, res) => res.send('API running'));
 
-// Підключення до бази даних
 pool.query('SELECT NOW()', (err, { rows }) => {
   if (err) {
     console.error('❌ Error connecting to the database:', err.stack);
@@ -29,7 +32,6 @@ pool.query('SELECT NOW()', (err, { rows }) => {
   }
 });
 
-// Запуск сервера
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
