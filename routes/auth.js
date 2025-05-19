@@ -1,4 +1,3 @@
-// === routes/auth.js ===
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -28,9 +27,11 @@ router.post('/register', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const emailToken = crypto.randomBytes(32).toString('hex');
+
+    // Додаємо роль за замовчуванням 'user'
     const { rows: newUser } = await pool.query(
-      'INSERT INTO users (username, email, password, email_token, is_verified) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-      [username, email, hashedPassword, emailToken, true]
+      'INSERT INTO users (username, email, password, email_token, is_verified, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [username, email, hashedPassword, emailToken, true, 'user']
     );
 
     await sendConfirmationEmail(email, emailToken);
@@ -58,7 +59,9 @@ router.post('/login', async (req, res) => {
     if (!await bcrypt.compare(password, user.password)) return sendError(res, 400, 'Invalid password');
     if (!user.is_verified) return sendError(res, 400, 'Please verify your email before logging in');
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    // В токен тепер додаємо і роль
+    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
     res.status(200).json({ token });
   } catch (err) {
     console.error('❌ Login failed:', err);
@@ -72,9 +75,9 @@ router.get('/profile', verifyToken, async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT id, username, email, first_name, last_name, patronymic, birth_date,
+      `SELECT id, username, email, role, first_name, last_name, patronymic, birth_date,
               military_unit, rank, position, mos, avatar_url
-       FROM users WHERE id=$1`,
+      FROM users WHERE id=$1`,
       [req.userId]
     );
     if (!rows.length) return sendError(res, 404, 'User not found');
@@ -100,7 +103,6 @@ router.put('/profile', verifyToken, async (req, res) => {
   } = req.body;
 
   try {
-    // Validate the provided data
     if (!first_name || !last_name || !patronymic || !birth_date) {
       return sendError(res, 400, 'Missing required fields');
     }
