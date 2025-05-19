@@ -41,7 +41,7 @@ router.post('/', verifyToken, upload.array('documents'), async (req, res) => {
       phone,
       comment,
       agreement,
-      command_id,
+      command_id,       // очікуємо текст (slug)
       brigade_name,
       vacancy_title
     } = req.body;
