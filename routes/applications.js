@@ -18,7 +18,6 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    // Додаємо часову мітку, щоб уникнути колізій
     const uniqueName = `${Date.now()}-${file.originalname}`;
     cb(null, uniqueName);
   },
@@ -47,12 +46,13 @@ router.post('/', verifyToken, upload.array('documents'), async (req, res) => {
       vacancy_title,
     } = req.body;
 
-    // Якщо файли завантажено, отримуємо їхні імена
-    const documentPaths = req.files?.map(file => file.filename) || [];
-    // Перетворюємо рядок 'true'/'false' в boolean
+    // Отримуємо імена файлів, якщо вони є
+    const documentPaths = req.files ? req.files.map(file => file.filename) : [];
+
+    // Перетворюємо 'true'/'false' у boolean
     const agreementValue = agreement === 'true';
 
-    // Вставка у БД (документи зберігаємо як масив текстів)
+    // Вставляємо у БД
     await pool.query(
       `
       INSERT INTO applications (
@@ -69,20 +69,20 @@ router.post('/', verifyToken, upload.array('documents'), async (req, res) => {
       `,
       [
         req.userId,
-        command_id,
-        brigade_name,
-        vacancy_title,
+        command_id || null,
+        brigade_name || null,
+        vacancy_title || null,
         first_name,
         last_name,
         patronymic,
         birth_date,
-        military_unit,
-        rank,
-        position,
-        mos,
+        military_unit || null,
+        rank || null,
+        position || null,
+        mos || null,
         email,
-        phone,
-        comment,
+        phone || null,
+        comment || null,
         agreementValue,
         documentPaths,
       ]
@@ -95,16 +95,14 @@ router.post('/', verifyToken, upload.array('documents'), async (req, res) => {
   }
 });
 
-// === Отримання списку заявок (для адміна) ===
+// === Отримання списку заявок (тільки для адміна) ===
 router.get('/', verifyToken, async (req, res) => {
   try {
-    // Перевіряємо роль користувача
     const { rows: userRows } = await pool.query('SELECT role FROM users WHERE id=$1', [req.userId]);
     if (!userRows.length || userRows[0].role !== 'admin') {
       return res.status(403).json({ error: 'Доступ заборонено' });
     }
 
-    // Повертаємо заявки, відсортовані за датою створення
     const { rows } = await pool.query('SELECT * FROM applications ORDER BY created_at DESC');
     res.json(rows);
   } catch (err) {

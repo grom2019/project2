@@ -7,6 +7,7 @@ const applicationsRoutes = require('./routes/applications');
 const pool = require('./db');
 
 dotenv.config();
+
 const { FRONTEND_URL, PORT = 5000 } = process.env;
 
 const app = express();
@@ -18,13 +19,17 @@ app.use(cors({
 }));
 
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // статичні файли (документи)
 
+// Статичні файли (наприклад, для завантажених аплікацій)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Підключення маршрутів з правильними префіксами
 app.use('/api/auth', authRoutes);
 app.use('/api/applications', applicationsRoutes);
 
 app.get('/', (req, res) => res.send('API running'));
 
+// Перевірка підключення до бази
 pool.query('SELECT NOW()', (err, { rows }) => {
   if (err) {
     console.error('❌ Error connecting to the database:', err.stack);

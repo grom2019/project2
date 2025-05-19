@@ -9,6 +9,7 @@ const verifyToken = require('../middleware/verifyToken');
 require('dotenv').config();
 
 const router = express.Router();
+
 const sendError = (res, status, message) => res.status(status).json({ error: message });
 
 // === РЕЄСТРАЦІЯ ===
@@ -28,7 +29,6 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const emailToken = crypto.randomBytes(32).toString('hex');
 
-    // Додаємо роль за замовчуванням 'user'
     const { rows: newUser } = await pool.query(
       'INSERT INTO users (username, email, password, email_token, is_verified, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
       [username, email, hashedPassword, emailToken, true, 'user']
@@ -59,7 +59,6 @@ router.post('/login', async (req, res) => {
     if (!await bcrypt.compare(password, user.password)) return sendError(res, 400, 'Invalid password');
     if (!user.is_verified) return sendError(res, 400, 'Please verify your email before logging in');
 
-    // В токен тепер додаємо і роль
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
     res.status(200).json({ token });
