@@ -147,4 +147,20 @@ router.put('/profile', verifyToken, async (req, res) => {
   }
 });
 
+// === Отримання списку користувачів (для адміна) ===
+router.get('/users', verifyToken, async (req, res) => {
+  try {
+    const { rows: userRows } = await pool.query('SELECT role FROM users WHERE id=$1', [req.userId]);
+    if (!userRows.length || userRows[0].role !== 'admin') {
+      return res.status(403).json({ error: 'Доступ заборонено' });
+    }
+
+    const { rows } = await pool.query('SELECT id, username, email, role FROM users ORDER BY username');
+    res.json(rows);
+  } catch (err) {
+    console.error('❌ Помилка отримання користувачів:', err);
+    res.status(500).json({ error: 'Помилка отримання користувачів' });
+  }
+});
+
 module.exports = router;

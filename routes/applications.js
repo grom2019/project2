@@ -47,7 +47,6 @@ router.post('/', verifyToken, upload.array('documents'), async (req, res) => {
     } = req.body;
 
     const documentPaths = req.files?.map(file => file.filename) || [];
-
     const agreementValue = agreement === 'true'; // перетворення рядка в boolean
 
     await pool.query(`
@@ -73,6 +72,22 @@ router.post('/', verifyToken, upload.array('documents'), async (req, res) => {
   } catch (err) {
     console.error('❌ Помилка збереження заявки:', err);
     res.status(500).json({ error: 'Помилка збереження заявки' });
+  }
+});
+
+// === Отримання списку заявок (для адміна) ===
+router.get('/', verifyToken, async (req, res) => {
+  try {
+    const { rows: userRows } = await pool.query('SELECT role FROM users WHERE id=$1', [req.userId]);
+    if (!userRows.length || userRows[0].role !== 'admin') {
+      return res.status(403).json({ error: 'Доступ заборонено' });
+    }
+
+    const { rows } = await pool.query('SELECT * FROM applications ORDER BY created_at DESC');
+    res.json(rows);
+  } catch (err) {
+    console.error('❌ Помилка отримання заявок:', err);
+    res.status(500).json({ error: 'Помилка отримання заявок' });
   }
 });
 

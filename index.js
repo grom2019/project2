@@ -18,7 +18,8 @@ app.use(cors({
 }));
 
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // якщо потрібно
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // статичні файли (документи)
+
 app.use('/api/auth', authRoutes);
 app.use('/api/applications', applicationsRoutes);
 
@@ -35,4 +36,3 @@ pool.query('SELECT NOW()', (err, { rows }) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
-//
