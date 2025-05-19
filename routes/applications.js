@@ -18,6 +18,7 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
+    // Додаємо часову мітку, щоб уникнути колізій
     const uniqueName = `${Date.now()}-${file.originalname}`;
     cb(null, uniqueName);
   },
@@ -41,15 +42,19 @@ router.post('/', verifyToken, upload.array('documents'), async (req, res) => {
       phone,
       comment,
       agreement,
-      command_id,       // очікуємо текст (slug)
+      command_id,
       brigade_name,
-      vacancy_title
+      vacancy_title,
     } = req.body;
 
+    // Якщо файли завантажено, отримуємо їхні імена
     const documentPaths = req.files?.map(file => file.filename) || [];
-    const agreementValue = agreement === 'true'; // перетворення рядка в boolean
+    // Перетворюємо рядок 'true'/'false' в boolean
+    const agreementValue = agreement === 'true';
 
-    await pool.query(`
+    // Вставка у БД (документи зберігаємо як масив текстів)
+    await pool.query(
+      `
       INSERT INTO applications (
         user_id, command_id, brigade_name, vacancy_title,
         first_name, last_name, patronymic, birth_date,
@@ -61,12 +66,27 @@ router.post('/', verifyToken, upload.array('documents'), async (req, res) => {
         $9, $10, $11, $12,
         $13, $14, $15, $16, $17
       )
-    `, [
-      req.userId, command_id, brigade_name, vacancy_title,
-      first_name, last_name, patronymic, birth_date,
-      military_unit, rank, position, mos,
-      email, phone, comment, agreementValue, documentPaths
-    ]);
+      `,
+      [
+        req.userId,
+        command_id,
+        brigade_name,
+        vacancy_title,
+        first_name,
+        last_name,
+        patronymic,
+        birth_date,
+        military_unit,
+        rank,
+        position,
+        mos,
+        email,
+        phone,
+        comment,
+        agreementValue,
+        documentPaths,
+      ]
+    );
 
     res.status(201).json({ message: 'Заявка успішно надіслана' });
   } catch (err) {
@@ -78,11 +98,13 @@ router.post('/', verifyToken, upload.array('documents'), async (req, res) => {
 // === Отримання списку заявок (для адміна) ===
 router.get('/', verifyToken, async (req, res) => {
   try {
+    // Перевіряємо роль користувача
     const { rows: userRows } = await pool.query('SELECT role FROM users WHERE id=$1', [req.userId]);
     if (!userRows.length || userRows[0].role !== 'admin') {
       return res.status(403).json({ error: 'Доступ заборонено' });
     }
 
+    // Повертаємо заявки, відсортовані за датою створення
     const { rows } = await pool.query('SELECT * FROM applications ORDER BY created_at DESC');
     res.json(rows);
   } catch (err) {
