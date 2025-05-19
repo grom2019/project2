@@ -149,13 +149,20 @@ router.put('/profile', verifyToken, async (req, res) => {
 
 // === Отримання списку користувачів (для адміна) ===
 router.get('/users', verifyToken, async (req, res) => {
+  console.log('🔍 GET /api/auth/users called by user ID:', req.userId);
+
   try {
     const { rows: userRows } = await pool.query('SELECT role FROM users WHERE id=$1', [req.userId]);
+    console.log('👤 Authenticated user role:', userRows[0]?.role);
+
     if (!userRows.length || userRows[0].role !== 'admin') {
+      console.warn('⛔ Access denied: not admin');
       return res.status(403).json({ error: 'Доступ заборонено' });
     }
 
     const { rows } = await pool.query('SELECT id, username, email, role FROM users ORDER BY username');
+    console.log('✅ Users fetched from DB:', rows.length);
+
     res.json(rows);
   } catch (err) {
     console.error('❌ Помилка отримання користувачів:', err);
