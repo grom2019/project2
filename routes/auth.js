@@ -70,13 +70,11 @@ router.post('/login', async (req, res) => {
 
 // === ПЕРЕГЛЯД ПРОФІЛЮ ===
 router.get('/profile', verifyToken, async (req, res) => {
-  console.log('✅ Profile access by user ID:', req.userId);
-
   try {
     const { rows } = await pool.query(
       `SELECT id, username, email, role, first_name, last_name, patronymic, birth_date,
               military_unit, rank, position, mos, avatar_url
-      FROM users WHERE id=$1`,
+       FROM users WHERE id=$1`,
       [req.userId]
     );
     if (!rows.length) return sendError(res, 404, 'User not found');
@@ -90,55 +88,21 @@ router.get('/profile', verifyToken, async (req, res) => {
 // === ОНОВЛЕННЯ ПРОФІЛЮ ===
 router.put('/profile', verifyToken, async (req, res) => {
   const {
-    first_name,
-    last_name,
-    patronymic,
-    birth_date,
-    military_unit,
-    rank,
-    position,
-    mos,
-    avatar_url
+    first_name, last_name, patronymic, birth_date,
+    military_unit, rank, position, mos, avatar_url
   } = req.body;
 
   try {
-    if (!first_name || !last_name || !patronymic || !birth_date) {
-      return sendError(res, 400, 'Missing required fields');
-    }
-
     const query = `
       UPDATE users SET 
-        first_name=$1,
-        last_name=$2,
-        patronymic=$3,
-        birth_date=$4,
-        military_unit=$5,
-        rank=$6,
-        position=$7,
-        mos=$8,
-        avatar_url=$9
-      WHERE id=$10 RETURNING id, username, email, first_name, last_name, patronymic, birth_date,
-        military_unit, rank, position, mos, avatar_url`;
+        first_name=$1, last_name=$2, patronymic=$3, birth_date=$4,
+        military_unit=$5, rank=$6, position=$7, mos=$8, avatar_url=$9
+      WHERE id=$10 RETURNING *`;
 
-    const values = [
-      first_name,
-      last_name,
-      patronymic,
-      birth_date,
-      military_unit,
-      rank,
-      position,
-      mos,
-      avatar_url,
-      req.userId
-    ];
-
+    const values = [first_name, last_name, patronymic, birth_date, military_unit, rank, position, mos, avatar_url, req.userId];
     const { rows } = await pool.query(query, values);
 
-    if (rows.length === 0) {
-      return sendError(res, 400, 'User not found');
-    }
-
+    if (!rows.length) return sendError(res, 400, 'User not found');
     res.status(200).json({ message: 'Profile updated successfully', user: rows[0] });
   } catch (err) {
     console.error('❌ Update profile error:', err);
@@ -146,26 +110,59 @@ router.put('/profile', verifyToken, async (req, res) => {
   }
 });
 
-// === Отримання списку користувачів (для адміна) ===
+// === СПИСОК КОРИСТУВАЧІВ ДЛЯ АДМІНА ===
 router.get('/users', verifyToken, async (req, res) => {
-  console.log('🔍 GET /api/auth/users called by user ID:', req.userId);
-
   try {
     const { rows: userRows } = await pool.query('SELECT role FROM users WHERE id=$1', [req.userId]);
-    console.log('👤 Authenticated user role:', userRows[0]?.role);
-
     if (!userRows.length || userRows[0].role !== 'admin') {
-      console.warn('⛔ Access denied: not admin');
       return res.status(403).json({ error: 'Доступ заборонено' });
     }
 
     const { rows } = await pool.query('SELECT id, username, email, role FROM users ORDER BY username');
-    console.log('✅ Users fetched from DB:', rows.length);
-
     res.json(rows);
   } catch (err) {
-    console.error('❌ Помилка отримання користувачів:', err);
     res.status(500).json({ error: 'Помилка отримання користувачів' });
+  }
+});
+
+// === ОНОВЛЕННЯ КОРИСТУВАЧА АДМІНОМ ===
+router.put('/users/:id', verifyToken, async (req, res) => {
+  const { username, email, role } = req.body;
+  const userId = req.params.id;
+
+  try {
+    const { rows: adminCheck } = await pool.query('SELECT role FROM users WHERE id=$1', [req.userId]);
+    if (!adminCheck.length || adminCheck[0].role !== 'admin') {
+      return res.status(403).json({ error: 'Доступ заборонено' });
+    }
+
+    const { rows } = await pool.query(
+      'UPDATE users SET username=$1, email=$2, role=$3 WHERE id=$4 RETURNING id, username, email, role',
+      [username, email, role, userId]
+    );
+
+    res.json({ message: 'Користувача оновлено', user: rows[0] });
+  } catch (err) {
+    console.error('❌ Помилка оновлення користувача:', err);
+    res.status(500).json({ error: 'Помилка оновлення' });
+  }
+});
+
+// === ВИДАЛЕННЯ КОРИСТУВАЧА ===
+router.delete('/users/:id', verifyToken, async (req, res) => {
+  const userId = req.params.id;
+
+  try {
+    const { rows: adminCheck } = await pool.query('SELECT role FROM users WHERE id=$1', [req.userId]);
+    if (!adminCheck.length || adminCheck[0].role !== 'admin') {
+      return res.status(403).json({ error: 'Доступ заборонено' });
+    }
+
+    await pool.query('DELETE FROM users WHERE id=$1', [userId]);
+    res.json({ message: 'Користувача видалено' });
+  } catch (err) {
+    console.error('❌ Помилка видалення користувача:', err);
+    res.status(500).json({ error: 'Помилка видалення' });
   }
 });
 
