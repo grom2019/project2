@@ -68,7 +68,7 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
-// === ОНОВИТИ заявку ===
+// === Оновити заявку ===
 router.put('/:id', verifyToken, async (req, res) => {
   const id = req.params.id;
   const { comment, vacancy_title, brigade_name, rank, position } = req.body;
@@ -92,7 +92,7 @@ router.put('/:id', verifyToken, async (req, res) => {
   }
 });
 
-// === ВИДАЛИТИ заявку ===
+// === Видалити заявку ===
 router.delete('/:id', verifyToken, async (req, res) => {
   const id = req.params.id;
 
@@ -107,6 +107,23 @@ router.delete('/:id', verifyToken, async (req, res) => {
   } catch (err) {
     console.error('❌ Помилка видалення заявки:', err);
     res.status(500).json({ error: 'Помилка видалення заявки' });
+  }
+});
+
+// === Отримати статистику заявок по бригадах (доступно всім) ===
+router.get('/stats/brigades', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT brigade_name, COUNT(*) AS application_count
+      FROM applications
+      GROUP BY brigade_name
+      ORDER BY application_count DESC
+    `);
+
+    res.json(rows);
+  } catch (err) {
+    console.error('❌ Помилка отримання статистики:', err);
+    res.status(500).json({ error: 'Помилка отримання статистики' });
   }
 });
 
