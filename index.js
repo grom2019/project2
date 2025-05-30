@@ -37,7 +37,7 @@ pool.query('SELECT NOW()', (err, { rows }) => {
     console.log('✅ Connected to the database at:', rows[0].now);
   }
 });
-
+//
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
